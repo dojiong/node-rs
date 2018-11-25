@@ -10,7 +10,6 @@ pub mod env;
 pub mod finalize;
 pub mod promise;
 pub mod ts_func;
-#[macro_use]
 pub mod types;
 pub mod value;
 

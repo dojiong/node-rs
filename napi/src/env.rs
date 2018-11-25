@@ -54,4 +54,8 @@ impl<'a> Env<'a> {
     pub fn undefined(self) -> JsResult<types::JsUndefined<'a>> {
         types::JsUndefined::get(self)
     }
+
+    pub fn string(self, s: &str) -> JsResult<types::JsString<'a>> {
+        types::JsString::new(self, s)
+    }
 }

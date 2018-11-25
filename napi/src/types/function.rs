@@ -10,6 +10,29 @@ use std::marker::PhantomData;
 use std::mem;
 use std::os::raw::c_char;
 
+pub struct JsArgv {
+    values: Vec<napi_value>,
+}
+
+impl JsArgv {
+    pub fn new() -> JsArgv {
+        JsArgv { values: Vec::new() }
+    }
+
+    pub fn push<V: IntoRawJsValue>(&mut self, value: V) {
+        self.values.push(unsafe { value.into_raw_js_value() })
+    }
+}
+
+#[macro_export]
+macro_rules! js_argv {
+    ($($item:expr),*) => ({
+        let mut argv = JsArgv::new();
+        $(argv.push($item);)*
+        argv
+    })
+}
+
 pub struct JsFunction<'a> {
     value: napi_value,
     _m: PhantomData<&'a i8>,
@@ -87,18 +110,13 @@ impl<'a> JsFunction<'a> {
         }
     }
 
-    pub fn call<T: JsValue<'a>, R: JsValue<'a>>(
-        &self,
-        env: Env<'a>,
-        this: &T,
-        argv: &[JsValueRaw],
-    ) -> JsResult<R> {
+    pub fn call<TS, R>(&self, env: Env<'a>, this: &TS, argv: JsArgv) -> JsResult<R>
+    where
+        TS: JsValue<'a>,
+        R: JsValue<'a>,
+    {
         unsafe {
-            let mut argv_raw: Vec<napi_value> = Vec::with_capacity(argv.len());
-            for arg in argv {
-                argv_raw.push(arg.as_raw());
-            }
-            let result = self.call_raw(env, this, &argv_raw)?;
+            let result = self.call_raw_argv(env, this, &argv.values)?;
             R::from_raw(env, result)
         }
     }
@@ -107,12 +125,54 @@ impl<'a> JsFunction<'a> {
         &self,
         env: Env<'a>,
         this: &T,
-        argv: &[JsValueRaw],
+        argv: JsArgv,
     ) -> JsResult<JsValueRaw<'a>> {
         self.call(env, this, argv)
     }
 
-    pub(crate) unsafe fn call_raw<T: JsValue<'a>>(
+    pub fn call1<TS, T, R>(&self, env: Env<'a>, this: &TS, arg: T) -> JsResult<R>
+    where
+        TS: JsValue<'a>,
+        T: IntoRawJsValue,
+        R: JsValue<'a>,
+    {
+        self.call(env, this, js_argv![arg])
+    }
+
+    pub fn call1_r<TS, T>(&self, env: Env<'a>, this: &TS, arg: T) -> JsResult<JsValueRaw<'a>>
+    where
+        TS: JsValue<'a>,
+        T: IntoRawJsValue,
+    {
+        self.call1(env, this, arg)
+    }
+
+    pub fn call2<TS, T1, T2, R>(&self, env: Env<'a>, this: &TS, arg1: T1, arg2: T2) -> JsResult<R>
+    where
+        TS: JsValue<'a>,
+        T1: IntoRawJsValue,
+        T2: IntoRawJsValue,
+        R: JsValue<'a>,
+    {
+        self.call(env, this, js_argv![arg1, arg2])
+    }
+
+    pub fn call2_r<TS, T1, T2>(
+        &self,
+        env: Env<'a>,
+        this: &TS,
+        arg1: T1,
+        arg2: T2,
+    ) -> JsResult<JsValueRaw<'a>>
+    where
+        TS: JsValue<'a>,
+        T1: IntoRawJsValue,
+        T2: IntoRawJsValue,
+    {
+        self.call(env, this, js_argv![arg1, arg2])
+    }
+
+    pub(crate) unsafe fn call_raw_argv<T: JsValue<'a>>(
         &self,
         env: Env<'a>,
         this: &T,
@@ -130,21 +190,4 @@ impl<'a> JsFunction<'a> {
         );
         Ok(result)
     }
-}
-
-#[macro_export]
-macro_rules! call_js_func {
-    ($func:expr, $env:expr, $this:expr, $($arg:expr),*) => {
-        unsafe {
-            let argv = vec![$(::node::value::JsValueRaw::from_raw($env, $arg.as_raw()).unwrap()),*];
-            $func.call($env, $this, &argv)
-        }
-    };
-
-    (r $func:expr, $env:expr, $this:expr, $($arg:expr),*) => {
-        unsafe {
-            let argv = vec![$(::node::value::JsValueRaw::from_raw($env, $arg.as_raw()).unwrap()),*];
-            $func.call_r($env, $this, &argv)
-        }
-    };
 }

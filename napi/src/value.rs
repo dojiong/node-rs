@@ -2,7 +2,7 @@ use crate::callback::Callback;
 use crate::env::Env;
 use crate::types;
 use crate::JsResult;
-use napi_sys::{napi_get_property, napi_set_property, napi_value, ValueType};
+use napi_sys::{napi_get_property, napi_has_property, napi_set_property, napi_value, ValueType};
 use std::marker::PhantomData;
 use std::mem;
 
@@ -62,6 +62,47 @@ pub trait JsValue<'a>: Sized {
                 &mut value
             );
             V::from_raw(env, value)
+        }
+    }
+
+    fn has_property<K: CastToJs<'a, types::JsString<'a>>>(
+        &self,
+        env: Env<'a>,
+        key: K,
+    ) -> JsResult<bool> {
+        unsafe {
+            let mut result = false;
+            let key: types::JsString<'a> = key.cast(env)?;
+            node_try!(
+                napi_has_property,
+                env,
+                self.as_raw(),
+                key.into_raw_js_value(),
+                &mut result
+            );
+            Ok(result)
+        }
+    }
+
+    fn get_property<K: CastToJs<'a, types::JsString<'a>>, V: JsValue<'a>>(
+        &self,
+        env: Env<'a>,
+        key: K,
+    ) -> JsResult<Option<V>> {
+        unsafe {
+            let mut value: napi_value = mem::uninitialized();
+            node_try!(
+                napi_get_property,
+                env,
+                self.as_raw(),
+                key.cast(env)?.into_raw_js_value(),
+                &mut value
+            );
+            if env.is_type_of(value, ValueType::Undefined)? {
+                Ok(None)
+            } else {
+                V::from_raw(env, value).map(Some)
+            }
         }
     }
 

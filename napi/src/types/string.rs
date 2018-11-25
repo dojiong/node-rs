@@ -42,13 +42,17 @@ impl<'a> JsValue<'a> for JsString<'a> {
 
 impl<'a> JsString<'a> {
     pub fn new(env: Env<'a>, s: &str) -> JsResult<Self> {
+        Self::from_utf8(env, s.as_bytes())
+    }
+
+    pub fn from_utf8(env: Env<'a>, bytes: &[u8]) -> JsResult<Self> {
         unsafe {
             let mut value: napi_value = mem::zeroed();
             node_try!(
                 napi_create_string_utf8,
                 env,
-                s.as_ptr() as *const c_char,
-                s.len(),
+                bytes.as_ptr() as *const c_char,
+                bytes.len(),
                 &mut value
             );
             Ok(JsString {

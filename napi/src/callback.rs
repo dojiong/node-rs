@@ -1,6 +1,6 @@
 use crate::env::Env;
-use crate::types::JsObject;
-use crate::value::{JsValue, JsValueRaw};
+use crate::types::{JsBool, JsNumber, JsObject, JsString};
+use crate::value::{CastToRust, JsValue, JsValueRaw};
 use crate::JsResult;
 use napi_sys::{napi_callback_info, napi_get_cb_info, napi_value};
 use std::ffi::c_void;
@@ -74,5 +74,25 @@ impl<'a> CallbackInfo<'a> {
         self.argv
             .get(index)
             .map(|v| JsValueRaw::from_raw_unchecked(*v))
+    }
+
+    pub fn arg_str(&self, env: Env<'a>, index: usize) -> JsResult<String> {
+        self.arg::<JsString<'a>>(env, index)?.cast(env)
+    }
+
+    pub fn arg_i32(&self, env: Env<'a>, index: usize) -> JsResult<i32> {
+        self.arg::<JsNumber<'a>>(env, index)?.cast(env)
+    }
+
+    pub fn arg_i64(&self, env: Env<'a>, index: usize) -> JsResult<i64> {
+        self.arg::<JsNumber<'a>>(env, index)?.cast(env)
+    }
+
+    pub fn arg_f64(&self, env: Env<'a>, index: usize) -> JsResult<f64> {
+        self.arg::<JsNumber<'a>>(env, index)?.cast(env)
+    }
+
+    pub fn arg_bool(&self, env: Env<'a>, index: usize) -> JsResult<bool> {
+        self.arg::<JsBool<'a>>(env, index)?.cast(env)
     }
 }

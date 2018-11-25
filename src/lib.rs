@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate napi;
 extern crate napi_derive;
 

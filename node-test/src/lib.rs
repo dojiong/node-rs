@@ -17,13 +17,13 @@ struct AddCaller;
 impl JsCaller<i32> for AddCaller {
     fn call<'a>(&self, env: Env<'a>, func: JsFunction<'a>, data: i32) {
         let num: JsNumber<'a> = data.cast(env).unwrap();
-        call_js_func!(r func, env, &func, num).unwrap();
+        func.call_r(env, &func, js_argv![num]).unwrap();
     }
 }
 
 fn add_slow<'a>(env: Env<'a>, info: CallbackInfo<'a>) -> JsResult<JsUndefined<'a>> {
-    let a: i32 = info.arg::<JsNumber<'a>>(env, 0)?.cast(env)?;
-    let b: i32 = info.arg::<JsNumber<'a>>(env, 1)?.cast(env)?;
+    let a = info.arg_i32(env, 0)?;
+    let b = info.arg_i32(env, 1)?;
     let cb = info.arg::<JsFunction<'a>>(env, 2)?;
     let ts_func = AddCaller.make_ts_func(env, cb)?;
     thread::spawn(move || {
