@@ -1,0 +1,8 @@
+[package]
+name = "napi"
+version = "0.1.0"
+authors = ["dojiong <jiongdu0.0@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+napi-sys = { path="../napi-sys" }

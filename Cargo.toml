@@ -1,0 +1,13 @@
+[package]
+name = "node"
+version = "0.1.0"
+authors = ["dojiong <jiongdu0.0@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+napi-sys = { path="./napi-sys" }
+napi = { path="./napi" }
+napi-derive = { path="./napi-derive" }
+
+[workspace]
+members = ["napi-sys", "napi", "napi-derive", "node-test"]

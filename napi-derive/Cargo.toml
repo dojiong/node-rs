@@ -1,0 +1,13 @@
+[package]
+name = "napi-derive"
+version = "0.1.0"
+authors = ["dojiong <jiongdu0.0@gmail.com>"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote = "0.6"
+syn = { version = "0.15", features = ["full", "extra-traits"] }
+napi = { path="../napi" }

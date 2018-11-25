@@ -1,0 +1,7 @@
+[package]
+name = "napi-sys"
+version = "0.1.0"
+authors = ["dojiong <jiongdu0.0@gmail.com>"]
+edition = "2018"
+
+[dependencies]

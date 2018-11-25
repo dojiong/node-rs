@@ -1,0 +1,12 @@
+[package]
+name = "node-test"
+version = "0.1.0"
+authors = ["lo"]
+edition = "2018"
+
+[lib]
+name = "addon"
+crate-type = ["cdylib"]
+
+[dependencies]
+node = { path=".." }
