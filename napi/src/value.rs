@@ -20,51 +20,6 @@ pub trait JsValue<'a>: Sized {
     unsafe fn as_raw(&self) -> napi_value;
     unsafe fn from_raw(env: Env<'a>, value: napi_value) -> JsResult<Self>;
 
-    fn set<K, V>(&mut self, env: Env<'a>, key: &K, value: &V) -> JsResult<()>
-    where
-        K: JsValue<'a>,
-        V: JsValue<'a>,
-    {
-        unsafe {
-            node_try!(
-                napi_set_property,
-                env,
-                self.as_raw(),
-                key.as_raw(),
-                value.as_raw()
-            );
-        }
-        Ok(())
-    }
-
-    fn set_function<T, C>(&mut self, env: Env<'a>, name: &str, callback: C) -> JsResult<()>
-    where
-        T: JsValue<'a>,
-        C: Callback<'a, T> + Sized,
-    {
-        let js_func = types::JsFunction::new(env, name, callback)?;
-        let key: types::JsString<'a> = name.cast(env)?;
-        self.set(env, &key, &js_func)
-    }
-
-    fn get<K, V>(&mut self, env: Env<'a>, key: &K) -> JsResult<V>
-    where
-        K: JsValue<'a>,
-        V: JsValue<'a>,
-    {
-        unsafe {
-            let mut value: napi_value = mem::uninitialized();
-            node_try!(
-                napi_get_property,
-                env,
-                self.as_raw(),
-                key.as_raw(),
-                &mut value
-            );
-            V::from_raw(env, value)
-        }
-    }
-
     fn has_property<K: CastToJs<'a, types::JsString<'a>>>(
         &self,
         env: Env<'a>,
@@ -104,6 +59,33 @@ pub trait JsValue<'a>: Sized {
                 V::from_raw(env, value).map(Some)
             }
         }
+    }
+
+    fn set_property<K: CastToJs<'a, types::JsString<'a>>, V: JsValue<'a>>(
+        &mut self,
+        env: Env<'a>,
+        key: K,
+        value: &V,
+    ) -> JsResult<()> {
+        unsafe {
+            node_try!(
+                napi_set_property,
+                env,
+                self.as_raw(),
+                key.cast(env)?.into_raw_js_value(),
+                value.as_raw()
+            );
+        }
+        Ok(())
+    }
+
+    fn set_function<T, C>(&mut self, env: Env<'a>, name: &str, callback: C) -> JsResult<()>
+    where
+        T: JsValue<'a>,
+        C: Callback<'a, T> + Sized,
+    {
+        let js_func = types::JsFunction::new(env, name, callback)?;
+        self.set_property(env, name, &js_func)
     }
 
     fn is_undefined(&self, env: Env<'a>) -> JsResult<bool> {
