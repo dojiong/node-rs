@@ -68,39 +68,3 @@ pub fn nodeinit(attr: TokenStream, input: TokenStream) -> TokenStream {
     )
     .into()
 }
-
-#[proc_macro_attribute]
-pub fn xnodeinit(attr: TokenStream, input: TokenStream) -> TokenStream {
-    let ast: syn::ItemFn = syn::parse(input).expect("#[nodeinit] must be used on a function");
-
-    let modname: syn::Ident;
-    if attr.is_empty() {
-        modname = ast.ident.clone();
-    } else {
-        modname = syn::parse(attr).expect("could not parse module name");
-    }
-    quote!(
-        #ast
-
-        #[allow(improper_ctypes)]
-        #[cfg_attr(target_os = "linux", link_section = ".ctors")]
-        #[cfg_attr(target_os = "macos", link_section = "__DATA,__mod_init_func")]
-        #[cfg_attr(target_os = "windows", link_section = ".CRT$XCU")]
-        pub static __LOAD_NODE_MODULE: extern "C" fn() = {
-            extern "C" fn __load_node_module() {
-                static mut __NODE_MODULE: ::napi_sys::napi_module = {
-                    nm_version: napi_sys::NAPI_MODULE_VERSION,
-                    nm_flags: 0,
-                    nm_filename: b"node_module.rs\0" as *const i8,
-                    nm_register_func: f,
-                    //nm_modname: b"node_module\0" as *const i8,
-                    nm_modname: concat!(stringify!(#modname), "\0") as *const i8;
-                    nm_priv: ::std::ptr::null_mut(),
-                    reserved: ::std::mem::zeroed(),
-                };
-            }
-            __load_node_module
-        };
-    )
-    .into()
-}
