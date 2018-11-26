@@ -1,10 +1,7 @@
 use crate::env::Env;
 use crate::value::{IntoRawJsValue, JsValue};
 use crate::JsResult;
-use napi_sys::{
-    napi_delete_element, napi_get_array_length, napi_get_element, napi_has_element, napi_is_array,
-    napi_set_element, napi_value,
-};
+use napi_sys::{self, napi_value};
 use std::marker::PhantomData;
 use std::mem;
 
@@ -20,7 +17,7 @@ impl<'a> JsValue<'a> for JsArray<'a> {
 
     unsafe fn from_raw(env: Env<'a>, value: napi_value) -> JsResult<Self> {
         let mut is_array = false;
-        node_try!(napi_is_array, env, value, &mut is_array);
+        node_try!(napi_sys::napi_is_array, env, value, &mut is_array);
         if !is_array {
             env.throw(None, "make JsArray from non-array")?;
         }
@@ -32,10 +29,59 @@ impl<'a> JsValue<'a> for JsArray<'a> {
 }
 
 impl<'a> JsArray<'a> {
+    pub fn new(env: Env<'a>) -> JsResult<Self> {
+        unsafe {
+            let mut value: napi_value = mem::zeroed();
+            node_try!(napi_sys::napi_create_array, env, &mut value);
+            Ok(JsArray {
+                value,
+                _m: PhantomData,
+            })
+        }
+    }
+
+    pub fn new_with_len(env: Env<'a>, len: usize) -> JsResult<Self> {
+        unsafe {
+            let mut value: napi_value = mem::zeroed();
+            node_try!(
+                napi_sys::napi_create_array_with_length,
+                env,
+                len,
+                &mut value
+            );
+            Ok(JsArray {
+                value,
+                _m: PhantomData,
+            })
+        }
+    }
+
+    pub unsafe fn from_raw_values(env: Env<'a>, values: &[napi_value]) -> JsResult<Self> {
+        let mut value: napi_value = mem::zeroed();
+        node_try!(
+            napi_sys::napi_create_array_with_length,
+            env,
+            values.len(),
+            &mut value
+        );
+        for (i, item) in values.iter().enumerate() {
+            node_try!(napi_sys::napi_set_element, env, value, i as u32, *item);
+        }
+        Ok(JsArray {
+            value,
+            _m: PhantomData,
+        })
+    }
+
     pub fn len(&self, env: Env<'a>) -> JsResult<usize> {
         unsafe {
             let mut result: u32 = 0;
-            node_try!(napi_get_array_length, env, self.value, &mut result);
+            node_try!(
+                napi_sys::napi_get_array_length,
+                env,
+                self.value,
+                &mut result
+            );
             Ok(result as usize)
         }
     }
@@ -43,7 +89,13 @@ impl<'a> JsArray<'a> {
     pub fn get<T: JsValue<'a>>(&self, env: Env<'a>, index: usize) -> JsResult<T> {
         unsafe {
             let mut value: napi_value = mem::zeroed();
-            node_try!(napi_get_element, env, self.value, index as u32, &mut value);
+            node_try!(
+                napi_sys::napi_get_element,
+                env,
+                self.value,
+                index as u32,
+                &mut value
+            );
             T::from_raw(env, value)
         }
     }
@@ -51,7 +103,7 @@ impl<'a> JsArray<'a> {
     pub fn set<T: JsValue<'a>>(&mut self, env: Env<'a>, index: usize, value: T) -> JsResult<()> {
         unsafe {
             node_try!(
-                napi_set_element,
+                napi_sys::napi_set_element,
                 env,
                 self.value,
                 index as u32,
@@ -64,16 +116,8 @@ impl<'a> JsArray<'a> {
     pub fn has(&self, env: Env<'a>, index: usize) -> JsResult<bool> {
         unsafe {
             let mut result = false;
-            node_try!(napi_has_element, env, self.value, index as u32, &mut result);
-            Ok(result)
-        }
-    }
-
-    pub fn delete(&mut self, env: Env<'a>, index: usize) -> JsResult<bool> {
-        unsafe {
-            let mut result = false;
             node_try!(
-                napi_delete_element,
+                napi_sys::napi_has_element,
                 env,
                 self.value,
                 index as u32,
@@ -82,4 +126,27 @@ impl<'a> JsArray<'a> {
             Ok(result)
         }
     }
+
+    pub fn delete(&mut self, env: Env<'a>, index: usize) -> JsResult<bool> {
+        unsafe {
+            let mut result = false;
+            node_try!(
+                napi_sys::napi_delete_element,
+                env,
+                self.value,
+                index as u32,
+                &mut result
+            );
+            Ok(result)
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! js_array {
+    ($env:expr, $($item:expr),*) => {
+        unsafe {
+            ::node::types::JsArray::from_raw_values($env, &[$($item.as_raw()),*])
+        }
+    };
 }
