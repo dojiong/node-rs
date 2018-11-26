@@ -28,6 +28,17 @@ impl<'a> JsValue<'a> for JsObject<'a> {
 }
 
 impl<'a> JsObject<'a> {
+    pub fn new(env: Env<'a>) -> JsResult<Self> {
+        unsafe {
+            let mut value: napi_value = mem::zeroed();
+            node_try!(napi_sys::napi_create_object, env, &mut value);
+            Ok(JsObject {
+                value,
+                _m: PhantomData,
+            })
+        }
+    }
+
     pub fn downcast<T: JsValue<'a>>(self, env: Env<'a>) -> JsResult<T> {
         unsafe { T::from_raw(env, self.value) }
     }
