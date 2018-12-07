@@ -7,15 +7,9 @@ extern crate quote;
 use proc_macro::TokenStream;
 
 #[proc_macro_attribute]
-pub fn nodeinit(attr: TokenStream, input: TokenStream) -> TokenStream {
+pub fn nodeinit(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let ast: syn::ItemFn = syn::parse(input).expect("#[nodeinit] must be used on a function");
     let fname = ast.ident.clone();
-    let modname: syn::Ident;
-    if attr.is_empty() {
-        modname = ast.ident.clone();
-    } else {
-        modname = syn::parse(attr).expect("could not parse module name");
-    }
     quote!(
         #ast
 
@@ -57,7 +51,7 @@ pub fn nodeinit(attr: TokenStream, input: TokenStream) -> TokenStream {
                     nm_flags: 0,
                     nm_filename: b"node_module.rs\0" as *const u8 as *const c_char,
                     nm_register_func: Some(__node_module_init),
-                    nm_modname: concat!(stringify!(#modname), "\0").as_ptr() as *const c_char,
+                    nm_modname: b"native_nodejs_module\0" as *const u8 as *const c_char,
                     nm_priv: 0 as *mut c_void,
                     reserved: [0 as *mut c_void; 4],
                 };
