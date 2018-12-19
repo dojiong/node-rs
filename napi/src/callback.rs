@@ -76,6 +76,10 @@ impl<'a> CallbackInfo<'a> {
             .map(|v| JsValueRaw::from_raw_unchecked(*v))
     }
 
+    pub fn arg_obj(&self, env: Env<'a>, index: usize) -> JsResult<JsObject<'a>> {
+        self.arg(env, index)
+    }
+
     pub fn arg_str(&self, env: Env<'a>, index: usize) -> JsResult<String> {
         self.arg::<JsString<'a>>(env, index)?.cast(env)
     }

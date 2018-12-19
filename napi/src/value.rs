@@ -1,8 +1,12 @@
 use crate::callback::Callback;
 use crate::env::Env;
 use crate::types;
+use crate::types::JsArray;
 use crate::JsResult;
-use napi_sys::{napi_get_property, napi_has_property, napi_set_property, napi_value, ValueType};
+use napi_sys::{
+    napi_get_property, napi_get_property_names, napi_has_property, napi_set_property, napi_value,
+    ValueType,
+};
 use std::marker::PhantomData;
 use std::mem;
 
@@ -19,6 +23,14 @@ impl IntoRawJsValue for napi_value {
 pub trait JsValue<'a>: Sized {
     unsafe fn as_raw(&self) -> napi_value;
     unsafe fn from_raw(env: Env<'a>, value: napi_value) -> JsResult<Self>;
+
+    fn get_property_names(&self, env: Env<'a>) -> JsResult<JsArray<'a>> {
+        unsafe {
+            let mut result: napi_value = mem::uninitialized();
+            node_try!(napi_get_property_names, env, self.as_raw(), &mut result);
+            JsArray::from_raw(env, result)
+        }
+    }
 
     fn has_property<K: CastToJs<'a, types::JsString<'a>>>(
         &self,

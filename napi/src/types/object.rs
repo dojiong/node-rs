@@ -1,7 +1,7 @@
 use crate::env::Env;
 use crate::value::{IntoRawJsValue, JsValue};
 use crate::JsResult;
-use napi_sys::{napi_coerce_to_object, napi_value};
+use napi_sys::{napi_coerce_to_object, napi_value, ValueType};
 use std::marker::PhantomData;
 use std::mem;
 
@@ -15,7 +15,10 @@ impl<'a> JsValue<'a> for JsObject<'a> {
         self.value
     }
 
-    unsafe fn from_raw(_env: Env<'a>, value: napi_value) -> JsResult<Self> {
+    unsafe fn from_raw(env: Env<'a>, value: napi_value) -> JsResult<Self> {
+        if !env.is_type_of(value, ValueType::Object)? {
+            env.throw(None, "make JsObject from non-object")?;
+        }
         Ok(JsObject {
             value,
             _m: PhantomData,

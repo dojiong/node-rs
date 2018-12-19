@@ -1,5 +1,6 @@
 use crate::env::Env;
-use crate::value::{IntoRawJsValue, JsValue};
+use crate::types::{JsBool, JsNumber, JsObject, JsString};
+use crate::value::{CastToRust, IntoRawJsValue, JsValue, JsValueRaw};
 use crate::JsResult;
 use napi_sys::{self, napi_value};
 use std::marker::PhantomData;
@@ -98,6 +99,44 @@ impl<'a> JsArray<'a> {
             );
             T::from_raw(env, value)
         }
+    }
+
+    pub fn get_raw(&self, env: Env<'a>, index: usize) -> JsResult<JsValueRaw<'a>> {
+        unsafe {
+            let mut value: napi_value = mem::zeroed();
+            node_try!(
+                napi_sys::napi_get_element,
+                env,
+                self.value,
+                index as u32,
+                &mut value
+            );
+            JsValueRaw::from_raw(env, value)
+        }
+    }
+
+    pub fn get_str(&self, env: Env<'a>, index: usize) -> JsResult<String> {
+        self.get::<JsString<'a>>(env, index)?.cast(env)
+    }
+
+    pub fn get_i32(&self, env: Env<'a>, index: usize) -> JsResult<i32> {
+        self.get::<JsNumber<'a>>(env, index)?.cast(env)
+    }
+
+    pub fn get_i64(&self, env: Env<'a>, index: usize) -> JsResult<i64> {
+        self.get::<JsNumber<'a>>(env, index)?.cast(env)
+    }
+
+    pub fn get_f64(&self, env: Env<'a>, index: usize) -> JsResult<f64> {
+        self.get::<JsNumber<'a>>(env, index)?.cast(env)
+    }
+
+    pub fn get_bool(&self, env: Env<'a>, index: usize) -> JsResult<bool> {
+        self.get::<JsBool<'a>>(env, index)?.cast(env)
+    }
+
+    pub fn get_obj(&self, env: Env<'a>, index: usize) -> JsResult<JsObject<'a>> {
+        self.get(env, index)
     }
 
     pub fn set<T: JsValue<'a>>(&mut self, env: Env<'a>, index: usize, value: T) -> JsResult<()> {
