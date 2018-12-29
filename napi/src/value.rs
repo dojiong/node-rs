@@ -108,6 +108,33 @@ pub trait JsValue<'a>: Sized {
         env.is_type_of(unsafe { self.as_raw() }, ValueType::Null)
     }
 
+    fn is_null_or_undefined(&self, env: Env<'a>) -> JsResult<bool> {
+        match env.type_of(unsafe { self.as_raw() })? {
+            ValueType::Null | ValueType::Undefined => Ok(true),
+            _ => Ok(false),
+        }
+    }
+
+    fn is_string(&self, env: Env<'a>) -> JsResult<bool> {
+        env.is_type_of(unsafe { self.as_raw() }, ValueType::String)
+    }
+
+    fn is_array(&self, env: Env<'a>) -> JsResult<bool> {
+        unsafe {
+            let mut result = false;
+            node_try!(napi_sys::napi_is_array, env, self.as_raw(), &mut result);
+            Ok(result)
+        }
+    }
+
+    fn is_object(&self, env: Env<'a>) -> JsResult<bool> {
+        env.is_type_of(unsafe { self.as_raw() }, ValueType::Object)
+    }
+
+    fn is_number(&self, env: Env<'a>) -> JsResult<bool> {
+        env.is_type_of(unsafe { self.as_raw() }, ValueType::Number)
+    }
+
     fn to_string(self, env: Env<'a>) -> JsResult<types::JsString<'a>> {
         types::JsString::coerce_from(env, self)
     }
