@@ -33,9 +33,27 @@ fn add_slow<'a>(env: Env<'a>, info: CallbackInfo<'a>) -> JsResult<JsUndefined<'a
     env.undefined()
 }
 
+struct WrapData {
+    n: i32,
+}
+
+fn make_wrap<'a>(env: Env<'a>, mut info: CallbackInfo<'a>) -> JsResult<JsUndefined<'a>> {
+    let n = info.arg_i32(env, 0)?;
+    JsWrap::wrap(env, &mut info.this, WrapData { n })?;
+    env.undefined()
+}
+
+fn get_wrap<'a>(env: Env<'a>, info: CallbackInfo<'a>) -> JsResult<JsNumber<'a>> {
+    let obj: JsWrap<'a, WrapData> = info.arg(env, 0)?;
+    let data: &WrapData = obj.as_ref(env)?;
+    data.n.cast(env)
+}
+
 #[nodeinit]
 fn addon<'a>(env: Env<'a>, mut exports: JsObject<'a>) -> JsResult<JsObject<'a>> {
     exports.set_function(env, "hello", hello)?;
     exports.set_function(env, "add_slow", add_slow)?;
+    exports.set_function(env, "make_wrap", make_wrap)?;
+    exports.set_function(env, "get_wrap", get_wrap)?;
     Ok(exports)
 }
