@@ -1,5 +1,6 @@
 mod array;
 mod boolean;
+mod buffer;
 mod function;
 mod number;
 mod object;
@@ -8,6 +9,7 @@ mod undefined;
 
 pub use self::array::JsArray;
 pub use self::boolean::JsBool;
+pub use self::buffer::JsBuffer;
 pub use self::function::{JsArgv, JsFunction};
 pub use self::number::JsNumber;
 pub use self::object::JsObject;

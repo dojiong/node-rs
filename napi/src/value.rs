@@ -141,6 +141,14 @@ pub trait JsValue<'a>: Sized {
         env.is_type_of(unsafe { self.as_raw() }, ValueType::Number)
     }
 
+    fn is_buffer(&self, env: Env<'a>) -> JsResult<bool> {
+        let mut result = false;
+        unsafe {
+            node_try!(napi_sys::napi_is_buffer, env, self.as_raw(), &mut result);
+        }
+        Ok(result)
+    }
+
     fn to_string(self, env: Env<'a>) -> JsResult<types::JsString<'a>> {
         types::JsString::coerce_from(env, self)
     }
