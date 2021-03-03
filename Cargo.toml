@@ -8,6 +8,7 @@ edition = "2018"
 napi-sys = { path="./napi-sys" }
 napi = { path="./napi" }
 napi-derive = { path="./napi-derive" }
+ctor = "0.1"
 
 [workspace]
 members = ["napi-sys", "napi", "napi-derive", "node-test"]

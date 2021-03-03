@@ -8,7 +8,7 @@ use napi_sys::{
     ValueType,
 };
 use std::marker::PhantomData;
-use std::mem;
+use std::mem::MaybeUninit;
 
 pub trait IntoRawJsValue {
     unsafe fn into_raw_js_value(self) -> napi_value;
@@ -26,9 +26,14 @@ pub trait JsValue<'a>: Sized {
 
     fn get_property_names(&self, env: Env<'a>) -> JsResult<JsArray<'a>> {
         unsafe {
-            let mut result: napi_value = mem::uninitialized();
-            node_try!(napi_get_property_names, env, self.as_raw(), &mut result);
-            JsArray::from_raw(env, result)
+            let mut result: MaybeUninit<napi_value> = MaybeUninit::uninit();
+            node_try!(
+                napi_get_property_names,
+                env,
+                self.as_raw(),
+                result.as_mut_ptr()
+            );
+            JsArray::from_raw(env, result.assume_init())
         }
     }
 
@@ -57,14 +62,15 @@ pub trait JsValue<'a>: Sized {
         key: K,
     ) -> JsResult<Option<V>> {
         unsafe {
-            let mut value: napi_value = mem::uninitialized();
+            let mut value = MaybeUninit::uninit();
             node_try!(
                 napi_get_property,
                 env,
                 self.as_raw(),
                 key.cast(env)?.into_raw_js_value(),
-                &mut value
+                value.as_mut_ptr()
             );
+            let value = value.assume_init();
             if env.is_type_of(value, ValueType::Undefined)? {
                 Ok(None)
             } else {
