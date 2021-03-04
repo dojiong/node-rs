@@ -1,8 +1,8 @@
 use std::{any::TypeId, ffi::c_void, marker::PhantomData, mem::MaybeUninit, ptr};
 
-use napi_sys::{napi_env, napi_unwrap, napi_value, napi_wrap};
+use napi_sys::{napi_unwrap, napi_value, napi_wrap};
 
-use crate::{env::Env, value::JsValue, JsResult};
+use crate::{env::Env, finalize::js_drop_finalize_cb, value::JsValue, JsResult};
 
 use super::JsObject;
 
@@ -48,7 +48,7 @@ where
                 env,
                 object.as_raw(),
                 native as *mut c_void,
-                Some(<TypeData<T>>::finalize),
+                Some(js_drop_finalize_cb::<TypeData<T>>),
                 ptr::null_mut(),
                 ptr::null_mut()
             );
@@ -115,10 +115,6 @@ impl<T: 'static> TypeData<T> {
             data,
         });
         Box::into_raw(result)
-    }
-
-    unsafe extern "C" fn finalize<'a>(_env: napi_env, raw: *mut c_void, _hint: *mut c_void) {
-        let _data = Box::from_raw(raw as *mut Self);
     }
 
     fn type_match(&self) -> bool {

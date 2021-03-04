@@ -3,27 +3,33 @@ use napi_sys::napi_env;
 use std::ffi::c_void;
 use std::marker::PhantomData;
 
-pub trait JsFinalize<D> {
-    fn finalize<'a>(env: Env<'a>, data: &mut D);
-}
+pub trait JsFinalize {
+    type Item;
 
-pub(crate) extern "C" fn js_finalize_cb<D: Sized, F: JsFinalize<D>>(
-    env: napi_env,
-    data: *mut c_void,
-    _hint: *mut c_void,
-) {
-    unsafe {
+    fn finalize<'a>(env: Env<'a>, data: &mut Self::Item);
+
+    unsafe extern "C" fn js_finalize_cb(env: napi_env, data: *mut c_void, _hint: *mut c_void) {
         let env = Env::from_raw(env);
-        let mut data: Box<D> = Box::from_raw(data as *mut D);
-        F::finalize(env, &mut data);
+        let mut data = Box::from_raw(data as *mut Self::Item);
+        Self::finalize(env, &mut data);
     }
 }
 
-pub struct DropDataFinalizer<D> {
+pub(crate) unsafe extern "C" fn js_drop_finalize_cb<D: Sized>(
+    env: napi_env,
+    data: *mut c_void,
+    hint: *mut c_void,
+) {
+    <DropFinalizer<D> as JsFinalize>::js_finalize_cb(env, data, hint);
+}
+
+pub struct DropFinalizer<D> {
     _m: PhantomData<D>,
 }
 
-impl<D> JsFinalize<D> for DropDataFinalizer<D> {
+impl<D> JsFinalize for DropFinalizer<D> {
+    type Item = D;
+
     fn finalize<'a>(_env: Env<'a>, _data: &mut D) {
         //
     }

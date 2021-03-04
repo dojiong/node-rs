@@ -1,8 +1,7 @@
-use crate::env::Env;
-use crate::finalize::{js_finalize_cb, DropDataFinalizer};
 use crate::types::{JsFunction, JsString};
 use crate::value::{CastToJs, IntoRawJsValue};
 use crate::JsResult;
+use crate::{env::Env, finalize::js_drop_finalize_cb};
 use napi_sys::{
     self, napi_env, napi_status, napi_threadsafe_function, napi_value, Status,
     ThreadsafeFunctionCallMode,
@@ -51,7 +50,7 @@ impl<D: Send + Sized> ThreadSafeFunction<D> {
                 0,
                 1,
                 ctx as *mut c_void,
-                Some(js_finalize_cb::<C, DropDataFinalizer<C>>),
+                Some(js_drop_finalize_cb::<C>),
                 ctx as *mut c_void,
                 Some(ts_function_call_js::<D, C>),
                 &mut result
