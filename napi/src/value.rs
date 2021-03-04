@@ -3,12 +3,9 @@ use crate::env::Env;
 use crate::types;
 use crate::types::JsArray;
 use crate::JsResult;
-use napi_sys::{
-    napi_get_property, napi_get_property_names, napi_has_property, napi_set_property, napi_value,
-    ValueType,
-};
-use std::marker::PhantomData;
+use napi_sys::{napi_value, ValueType};
 use std::mem::MaybeUninit;
+use std::{ffi::CStr, marker::PhantomData};
 
 pub trait IntoRawJsValue {
     unsafe fn into_raw_js_value(self) -> napi_value;
@@ -28,7 +25,7 @@ pub trait JsValue<'a>: Sized {
         unsafe {
             let mut result: MaybeUninit<napi_value> = MaybeUninit::uninit();
             node_try!(
-                napi_get_property_names,
+                napi_sys::napi_get_property_names,
                 env,
                 self.as_raw(),
                 result.as_mut_ptr()
@@ -46,10 +43,24 @@ pub trait JsValue<'a>: Sized {
             let mut result = false;
             let key: types::JsString<'a> = key.cast(env)?;
             node_try!(
-                napi_has_property,
+                napi_sys::napi_has_property,
                 env,
                 self.as_raw(),
                 key.into_raw_js_value(),
+                &mut result
+            );
+            Ok(result)
+        }
+    }
+
+    fn has_named_property(&self, env: Env<'a>, key: &CStr) -> JsResult<bool> {
+        unsafe {
+            let mut result = false;
+            node_try!(
+                napi_sys::napi_has_named_property,
+                env,
+                self.as_raw(),
+                key.as_ptr(),
                 &mut result
             );
             Ok(result)
@@ -64,10 +75,29 @@ pub trait JsValue<'a>: Sized {
         unsafe {
             let mut value = MaybeUninit::uninit();
             node_try!(
-                napi_get_property,
+                napi_sys::napi_get_property,
                 env,
                 self.as_raw(),
                 key.cast(env)?.into_raw_js_value(),
+                value.as_mut_ptr()
+            );
+            let value = value.assume_init();
+            if env.is_type_of(value, ValueType::Undefined)? {
+                Ok(None)
+            } else {
+                V::from_raw(env, value).map(Some)
+            }
+        }
+    }
+
+    fn get_named_property<V: JsValue<'a>>(&self, env: Env<'a>, key: &CStr) -> JsResult<Option<V>> {
+        unsafe {
+            let mut value = MaybeUninit::uninit();
+            node_try!(
+                napi_sys::napi_get_named_property,
+                env,
+                self.as_raw(),
+                key.as_ptr(),
                 value.as_mut_ptr()
             );
             let value = value.assume_init();
@@ -87,10 +117,28 @@ pub trait JsValue<'a>: Sized {
     ) -> JsResult<()> {
         unsafe {
             node_try!(
-                napi_set_property,
+                napi_sys::napi_set_property,
                 env,
                 self.as_raw(),
                 key.cast(env)?.into_raw_js_value(),
+                value.as_raw()
+            );
+        }
+        Ok(())
+    }
+
+    fn set_named_property<V: JsValue<'a>>(
+        &mut self,
+        env: Env<'a>,
+        key: &CStr,
+        value: &V,
+    ) -> JsResult<()> {
+        unsafe {
+            node_try!(
+                napi_sys::napi_set_named_property,
+                env,
+                self.as_raw(),
+                key.as_ptr(),
                 value.as_raw()
             );
         }
